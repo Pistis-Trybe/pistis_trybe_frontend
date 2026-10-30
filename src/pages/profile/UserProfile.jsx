@@ -1,0 +1,180 @@
+import { useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, MessageCircle } from "lucide-react";
+import { getMe, getUserPosts, getUserById, toggleFollow } from "../../services/UserService";
+import { startDirectChat } from "../../services/ChatService";
+import ActivityContent from "../../community/components/profile/ActivityContent";
+import ImageViewer from "../../shared/ImageViewer";
+import getErrorMessage from "../../hooks/useErrorToast";
+import { toast } from "react-toastify";
+
+export default function UserProfile() {
+  const { userId } = useParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [activeTab] = useState("feed");
+  const [viewerOpen, setViewerOpen] = useState(false);
+
+  const { data: currentUser } = useQuery({ queryKey: ['me'], queryFn: getMe });
+
+  const { data: profileUser, isLoading } = useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => getUserById(userId),
+    enabled: !!userId,
+  });
+
+  const { data: postsData, isLoading: postsLoading } = useQuery({
+    queryKey: ['userPosts', userId],
+    queryFn: () => getUserPosts(userId),
+    enabled: !!userId,
+  });
+
+  const isFollowing = !!profileUser?.isFollowing;
+
+  const followMutation = useMutation({
+    mutationFn: () => toggleFollow(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', userId] });
+      queryClient.invalidateQueries({ queryKey: ['people'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+
+  const messageMutation = useMutation({
+    mutationFn: () => startDirectChat(userId),
+    onSuccess: (chat) => navigate(`/dashboard/messages/${chat._id}`),
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-4 border-[#401667] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!profileUser) {
+    return <div className="text-center py-20 text-gray-400">User not found.</div>;
+  }
+
+  const isOwnProfile = currentUser?._id?.toString() === userId?.toString();
+
+  return (
+    <div className="relative min-h-screen pb-12">
+      <div className="overflow-auto w-full px-2 py-2">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 mb-4 transition"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+
+        {/* Profile card */}
+        <div className="border mb-3 border-[#E8E8E8] dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow rounded-2xl">
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex flex-col gap-4">
+              <div
+                className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gray-200 overflow-hidden shrink-0 ${
+                  profileUser.avatarUrl ? "cursor-pointer hover:opacity-90 transition" : ""
+                }`}
+                onClick={() => profileUser.avatarUrl && setViewerOpen(true)}
+              >
+                {profileUser.avatarUrl ? (
+                  <img src={profileUser.avatarUrl} alt={profileUser.fullName} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-[#401667] flex items-center justify-center">
+                    <span className="text-white text-2xl font-semibold">
+                      {profileUser.fullName?.charAt(0)?.toUpperCase() || profileUser.email?.charAt(0)?.toUpperCase()}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-slate-100">
+                    {profileUser.fullName || "No name set"}
+                  </h2>
+                  {!isOwnProfile && profileUser.followsYou && (
+                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">Follows you</span>
+                  )}
+                </div>
+                {profileUser.biography && (
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 max-w-sm">{profileUser.biography}</p>
+                )}
+                <div className="flex flex-wrap gap-4 mt-3 text-xs sm:text-sm text-gray-600 dark:text-slate-300">
+                  {[["followers", "Followers", profileUser.followersCount], ["following", "Following", profileUser.followingCount]].map(([tab, label, count]) =>
+                    profileUser.canViewConnections ? (
+                      <Link key={tab} to={`/dashboard/users/${userId}/connections?tab=${tab}`} className="hover:underline">
+                        <strong className="text-gray-900 dark:text-slate-100">{count || 0}</strong> {label}
+                      </Link>
+                    ) : (
+                      <span key={tab} title="Follow each other to see this list">
+                        <strong className="text-gray-900 dark:text-slate-100">{count || 0}</strong> {label}
+                      </span>
+                    )
+                  )}
+                  <span><strong className="text-gray-900 dark:text-slate-100">{postsData?.posts?.length || 0}</strong> Posts</span>
+                </div>
+              </div>
+            </div>
+
+            {!isOwnProfile && (
+              <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                <button
+                  onClick={() => messageMutation.mutate()}
+                  disabled={messageMutation.isPending}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-800 transition disabled:opacity-50 text-gray-700 dark:text-slate-200"
+                >
+                  <MessageCircle className="w-4 h-4" /> Message
+                </button>
+                <button
+                  onClick={() => followMutation.mutate()}
+                  disabled={followMutation.isPending}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition disabled:opacity-50 ${
+                    isFollowing
+                      ? "border border-gray-300 text-gray-600 hover:text-red-500 hover:border-red-300"
+                      : "bg-[#401667] text-white hover:opacity-90"
+                  }`}
+                >
+                  {followMutation.isPending ? "..." : isFollowing ? "Following" : profileUser.followsYou ? "Follow back" : "Follow"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Posts */}
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl px-4 py-4 shadow-sm border border-gray-200 dark:border-slate-700">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">Posts</h2>
+          </div>
+          <ActivityContent
+            activeTab={activeTab}
+            posts={postsData?.posts || []}
+            currentUser={currentUser}
+            isLoading={postsLoading}
+            onLike={() => {
+              queryClient.invalidateQueries({ queryKey: ['userPosts', userId] });
+            }}
+            onDelete={() => {
+              queryClient.invalidateQueries({ queryKey: ['userPosts', userId] });
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Avatar viewer - moved INSIDE the main return */}
+      <ImageViewer
+        key={`${viewerOpen}-0`}
+        images={profileUser?.avatarUrl ? [profileUser.avatarUrl] : []}
+        startIndex={0}
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
+    </div>
+  );
+}

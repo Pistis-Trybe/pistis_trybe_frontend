@@ -1,0 +1,94 @@
+import { useState } from 'react';
+import ProfileTopBlock from "../../community/components/profile/ProfileTopBlock";
+import ActivityTabs from "../../community/components/profile/Activitytabs";
+import ActivityContent from "../../community/components/profile/ActivityContent";
+import { getMe } from '../../services/UserService';
+import { getUserById } from '../../services/UserService';
+import { getUserPosts } from '../../services/UserService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-toastify';
+import { likeGroupPost, deletePost } from '../../services/GroupService';
+import getErrorMessage from '../../hooks/useErrorToast';
+
+export default function Profile() {
+  const [activeTab, setActiveTab] = useState("feed");
+  const queryClient = useQueryClient();
+
+  const { data: currentUser, isLoading: userLoading } = useQuery({
+    queryKey: ['me'],
+    queryFn: getMe,
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ['user', currentUser?._id],
+    queryFn: () => getUserById(currentUser._id),
+    enabled: !!currentUser?._id,
+  });
+
+  const { data: postsData, isLoading: postsLoading } = useQuery({
+    queryKey: ['userPosts', currentUser?._id],
+    queryFn: () => getUserPosts(currentUser._id),
+    enabled: !!currentUser?._id,
+  });
+
+  const userPosts = postsData?.posts || [];
+  
+  
+  const likeMutation = useMutation({
+    mutationFn: (postId) => likeGroupPost({ postId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["user-posts"] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (postId) => deletePost({ postId }), // groupId not needed, backend checks author
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-posts", currentUser._id] });
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  
+  const profileUser = currentUser ? {
+    _id: currentUser._id,
+    name: currentUser.fullName || currentUser.email,
+    avatar: currentUser.avatarUrl,
+    biography: currentUser.biography,
+    followersCount: stats?.followersCount || 0,
+    followingCount: stats?.followingCount || 0,
+    posts: userPosts,
+  } : null;
+
+  if (userLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-4 border-[#401667] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full min-w-0 pb-12">
+      <div className="w-full min-w-0 py-2 sm:px-2">
+        <div className="mb-3">
+          <ProfileTopBlock user={profileUser} />
+        </div>
+
+        <div className="space-y-4 sm:space-y-6">
+          <ActivityTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+
+          <ActivityContent
+            activeTab={activeTab}
+            posts={activeTab === "feed" ? userPosts : []}
+            isLoading={postsLoading}
+            currentUser={currentUser}
+            onLike={likeMutation.mutate}
+            onDelete={deleteMutation.mutate} 
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
