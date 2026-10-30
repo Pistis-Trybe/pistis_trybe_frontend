@@ -1,0 +1,144 @@
+import React, { useState, useRef, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { User, MoreVertical, Pencil, Settings, LogOut } from "lucide-react";
+import { logoutUser } from "../../../services/AuthService";
+import ImageViewer from "../../../shared/ImageViewer";
+import CornerBrackets from "../../../shared/CornerBrackets";
+
+export default function ProfileTopBlock({ user }) {
+  const isEmpty = !user;
+  const [showMenu, setShowMenu] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const menuRef = useRef(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    logoutUser();
+    navigate("/login");
+    setShowMenu(false);
+  };
+
+  const menuItems = [
+    { 
+        label: isEmpty ? "Create Profile" : "Edit", 
+        icon: Pencil, 
+        to: "/dashboard/profile/edit" 
+    },
+    { 
+        label: "Settings", 
+        icon: Settings, 
+        to: "/dashboard/profile/settings" 
+    },
+    { 
+        label: "Log Out", 
+        icon: LogOut, 
+        onClick: handleLogout, 
+        danger: true 
+    },
+  ];
+
+  return (
+    <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-700 flex justify-between items-start gap-2 sm:gap-4 p-4 sm:p-6 shadow-sm min-w-0 overflow-hidden relative">
+      <CornerBrackets />
+      {/* LEFT SIDE */}
+      <div className="flex flex-col gap-3 sm:gap-6 min-w-0 flex-1">
+        {/* Avatar — clickable to view full size */}
+        <div
+          className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gray-200 flex items-center justify-center shrink-0 overflow-hidden ${
+            !isEmpty && user?.avatar ? "cursor-pointer hover:opacity-90 transition" : ""
+          }`}
+          onClick={() => !isEmpty && user?.avatar && setViewerOpen(true)}
+        >
+          {!isEmpty && user?.avatar ? (
+            <img src={user.avatar} alt="profile" className="w-full h-full rounded-full object-cover" />
+          ) : (
+            <User className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400" strokeWidth={1.5} />
+          )}
+        </div>
+
+        <div className="flex flex-col min-w-0">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-slate-100 break-words">
+            {isEmpty ? "No profile yet" : user.name || "Complete your profile"}
+          </h2>
+          {!isEmpty && !user.name && (
+            <p className="text-xs text-[#401667] dark:text-purple-300 mt-1">👉 Tap the menu to add your name and bio</p>
+          )}
+
+          <div className="flex flex-wrap gap-x-4 gap-y-1 sm:gap-6 mt-3 text-xs sm:text-sm text-gray-600 dark:text-slate-300">
+            <Link to={isEmpty ? "#" : `/dashboard/users/${user._id}/connections?tab=followers`} className="whitespace-nowrap hover:underline">
+              <strong className="text-gray-900 dark:text-slate-100">{isEmpty ? 0 : user.followersCount || 0}</strong> Followers
+            </Link>
+            <Link to={isEmpty ? "#" : `/dashboard/users/${user._id}/connections?tab=following`} className="whitespace-nowrap hover:underline">
+              <strong className="text-gray-900 dark:text-slate-100">{isEmpty ? 0 : user.followingCount || 0}</strong> Following
+            </Link>
+            <span className="whitespace-nowrap">
+              <strong className="text-gray-900 dark:text-slate-100">{isEmpty ? 0 : user.posts?.length || 0}</strong> Posts
+            </span>
+          </div>
+
+          {isEmpty && (
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-2">Create your profile to start connecting.</p>
+          )}
+        </div>
+      </div>
+
+      {/* RIGHT SIDE - 3 DOT MENU */}
+      <div className="relative shrink-0" ref={menuRef}>
+        <button
+          onClick={() => setShowMenu(!showMenu)}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition group relative text-gray-600 dark:text-slate-200"
+          aria-label="Profile options"
+        >
+          <MoreVertical className="w-5 h-5" />
+          <span className="hidden md:block absolute -top-8 right-0 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
+            Options
+          </span>
+        </button>
+
+        {showMenu && (
+          <div className="absolute right-0 top-10 w-36 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-md z-20 py-1">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const baseClasses = `w-full flex items-center gap-3 px-3 py-2 text-sm transition ${
+                item.danger ? "text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10" : "text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800"
+              }`;
+              if (item.to) {
+                return (
+                  <Link key={item.label} to={item.to} onClick={() => setShowMenu(false)} className={baseClasses}>
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                  </Link>
+                );
+              }
+              return (
+                <button key={item.label} onClick={item.onClick} className={baseClasses}>
+                  <Icon className="w-4 h-4" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Avatar full-screen viewer */}
+      <ImageViewer
+        key={`${viewerOpen}-${0}`} 
+        images={user?.avatar ? [user.avatar] : []}
+        startIndex={0}
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
+    </div>
+  );
+}

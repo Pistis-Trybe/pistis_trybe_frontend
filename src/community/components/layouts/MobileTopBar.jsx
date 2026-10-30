@@ -1,0 +1,110 @@
+import { useState } from "react";
+import { Bell, Menu, Search } from "lucide-react";
+import ThemeToggle from "../../../theme/ThemeToggle";
+import LogoMark from "../../../shared/LogoMark";
+import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { getMe } from "../../../services/UserService";
+import { getNotifications } from "../../../services/NotificationService";
+import NotificationsPanel from "./NotificationsPanel";
+
+const MobileTopBar = ({ onMenuClick }) => {
+  const navigate = useNavigate();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [searchText, setSearchText] = useState("");
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const q = searchText.trim();
+    navigate(q ? `/dashboard/people?q=${encodeURIComponent(q)}` : "/dashboard/people");
+    setSearchText("");
+  };
+  const { data: user } = useQuery({ queryKey: ["me"], queryFn: getMe });
+
+  const { data: notifData } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => getNotifications(1, 10),
+    refetchInterval: 60_000,
+  });
+  const unreadCount = notifData?.unreadCount || 0;
+
+  return (
+    <header className="sticky flex items-center justify-between top-0 z-30 ob-topbar px-3 sm:px-5 md:px-10 py-2 gap-2 w-full max-w-full">
+      {/* Logo */}
+      <div className="flex items-center shrink-0 md:py-3 gap-1 sm:gap-2">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className="lg:hidden p-2 -ml-1 rounded-lg hover:bg-gray-100 transition text-gray-700 dark:text-slate-100"
+          aria-label="Open menu"
+        >
+          <Menu size={22} />
+        </button>
+        <Link to="/dashboard/feed" className="flex items-center gap-2">
+          <LogoMark className="w-8 h-8" />
+          <span className="hidden sm:inline md:text-lg font-semibold text-gray-800 dark:text-slate-100">Pistis Trybe</span>
+        </Link>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 md:gap-10 px-0 sm:px-4 py-3 min-w-0 flex-1 md:flex-none w-full md:w-9/12">
+        {/* Search Bar */}
+        <div className="flex-1 min-w-0">
+          <form onSubmit={handleSearch} className="flex items-center gap-2 bg-gray-100 dark:bg-slate-900 rounded-xl px-3 py-2 w-full md:w-10/12 border border-transparent dark:border-slate-700">
+            <Search size={16} className="text-gray-500 dark:text-slate-400" />
+            <input
+              type="text"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search people..."
+              className="bg-transparent outline-none text-sm placeholder:text-gray-400 dark:placeholder:text-slate-400 text-gray-800 dark:text-slate-100 md:p-2 w-full min-w-0"
+            />
+          </form>
+        </div>
+
+        {/* Right Icons */}
+        <div className="flex items-center gap-0.5 sm:gap-3 md:gap-5 shrink-0">
+          {/* FIX: Notification bell wired up */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-2 rounded-lg hover:bg-gray-100 transition"
+            >
+              <Bell size={20} />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <div className="absolute right-60 top-14 z-50">
+                <NotificationsPanel
+                  notifications={notifData?.notifications || []}
+                  onClose={() => setShowNotifications(false)}
+                />
+              </div>
+            )}
+          </div>
+
+          <ThemeToggle />
+
+          {/* Profile */}
+          <Link to="/dashboard/profile" className="flex items-center gap-2">
+            {user?.avatarUrl ? (
+              <img src={user.avatarUrl} alt="profile" className="w-9 h-9 rounded-full object-cover ring-2 ring-gray-100" />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-[#401667] flex items-center justify-center ring-2 ring-gray-100">
+                <span className="text-white text-sm font-semibold">
+                  {user?.fullName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "?"}
+                </span>
+              </div>
+            )}
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export default MobileTopBar;

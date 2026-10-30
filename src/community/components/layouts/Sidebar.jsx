@@ -1,0 +1,254 @@
+import { useLocation, Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { X, LogOut, MessageSquareText, CheckCircle2, Send } from "lucide-react";
+import clsx from "clsx";
+import { FiHome, FiUsers, FiBookOpen, FiMessageCircle, FiUserPlus, FiEdit2, FiChevronLeft } from "react-icons/fi";
+import LogoMark from "../../../shared/LogoMark";
+import { logoutUser } from "../../../services/AuthService";
+import CreatePostModal from "../groups/CreatePostModal";
+import CreateGroupModal from "../groups/CreateGroupModal";
+import { getMe } from "../../../services/UserService";
+import emailjs from "@emailjs/browser";
+import { toast } from "react-toastify";
+
+export default function Sidebar({ isOpen, onClose, isMobile = false }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const [showCreatePost, setShowCreatePost] = useState(false);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showFeedbackSuccess, setShowFeedbackSuccess] = useState(false);
+  const [feedbackForm, setFeedbackForm] = useState({ name: "", email: "", feedback: "" });
+
+  const collapsed = isMobile ? false : desktopCollapsed;
+  const isMessagesPage = location.pathname.startsWith("/dashboard/messages");
+
+  const { data: user } = useQuery({ queryKey: ["me"], queryFn: getMe });
+
+  const handleLogout = () => { logoutUser(); navigate("/login"); };
+
+  const mainLinks = [
+    { name: "Feed", path: "/dashboard/feed", icon: <FiHome /> },
+    { name: "Bible", path: "/dashboard/bible", icon: <FiBookOpen /> },
+    { name: "Groups", path: "/dashboard/groups", icon: <FiUsers /> },
+    { name: "People", path: "/dashboard/people", icon: <FiUserPlus /> },
+    { name: "Messages", path: "/dashboard/messages", icon: <FiMessageCircle /> },
+  ];
+
+  const quickLinks = [
+    { name: "Create New Post", onClick: () => setShowCreatePost(true), icon: <FiEdit2 /> },
+    { name: "Create New Group", onClick: () => setShowCreateGroup(true), icon: <FiUsers /> },
+    { name: "Send Feedback", onClick: () => setShowFeedbackModal(true), icon: <MessageSquareText /> },
+  ];
+
+  const handleFeedbackChange = (e) => {
+    const { name, value } = e.target;
+    setFeedbackForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFeedbackSubmit = async (e) => {
+    e.preventDefault();
+
+    const templateParams = {
+      from_name:  feedbackForm.name,
+      from_email: feedbackForm.email,
+      message:    feedbackForm.feedback,
+      to_name:    "Pistis Trybe Team",
+      sent_at:    new Date().toLocaleString(),
+    };
+
+    try {
+      await emailjs.send(
+        import.meta.env.VITE_EMAILJS_SERVICE_ID,
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+        templateParams,
+        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+      );
+
+      setFeedbackForm({ name: "", email: "", feedback: "" });
+      setShowFeedbackModal(false);
+      setShowFeedbackSuccess(true);
+    } catch (err) {
+      console.error("EmailJS error:", err);
+      toast.error("Failed to send feedback. Please try again.");
+    }
+  };
+
+  const renderLink = (link, isQuick = false) => {
+    const isActive = !isQuick && location.pathname === link.path;
+    if (link.onClick) {
+      return (
+        <button key={link.name} onClick={() => { link.onClick(); isMobile && onClose?.(); }}
+          className={clsx("flex items-center transition-all rounded-lg px-3 py-2.5 xl:py-3 text-white w-full", collapsed ? "justify-center" : "justify-start", "hover:bg-white/10")}>
+          <span className="w-5 h-5 flex items-center justify-center shrink-0">{link.icon}</span>
+          {!collapsed && <span className="ml-3 text-sm xl:text-[15px]">{link.name}</span>}
+        </button>
+      );
+    }
+    return (
+      <Link key={link.name} to={link.path} onClick={() => isMobile && onClose?.()}
+        className={clsx("flex items-center transition-all rounded-lg px-3 py-2.5 xl:py-3 text-white", collapsed ? "justify-center" : "justify-start", isActive ? "bg-white/15 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_6px_16px_-8px_rgba(0,0,0,0.6)]" : "text-white/80 hover:bg-white/10 hover:text-white")}>
+        <span className="w-5 h-5 flex items-center justify-center shrink-0">{link.icon}</span>
+        {!collapsed && <span className="ml-3 text-sm xl:text-[15px]">{link.name}</span>}
+      </Link>
+    );
+  };
+
+  const sidebarClasses = clsx(
+    "ob-sidebar text-white flex flex-col justify-between p-3 rounded-2xl transition-all duration-300",
+    isMobile ? "fixed top-0 left-0 z-[60] w-72 max-w-[85vw] h-dvh transform rounded-l-none"
+      : clsx(collapsed ? "w-20" : "w-64 xl:w-72 2xl:w-80", "sticky hidden lg:flex",
+        isMessagesPage ? "top-0 h-[95vh] rounded-none" : "top-25 h-[calc(100vh-7rem)]")
+  );
+  const mobileTransform = isMobile && (isOpen ? "translate-x-0" : "-translate-x-full");
+
+  return (
+    <>
+      {isMobile && isOpen && <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[55] lg:hidden" onClick={onClose} />}
+
+      <aside className={clsx(sidebarClasses, mobileTransform)}>
+        <div className="flex flex-col gap-4 overflow-y-auto min-h-0 flex-1 pb-3">
+          <div className="flex items-center justify-between px-2 shrink-0">
+            {isMobile ? (
+              <button onClick={onClose} className="p-1 hover:bg-white/10 rounded"><X size={20} /></button>
+            ) : (
+              <button onClick={() => setDesktopCollapsed(!desktopCollapsed)} className="p-1 hover:bg-white/10 rounded transition-transform duration-300 bg-white/30">
+                <FiChevronLeft className={clsx("w-6 h-6 transition-transform duration-300", collapsed && "rotate-180")} />
+              </button>
+            )}
+          </div>
+
+          <nav className="flex flex-col gap-1.5">{mainLinks.map((l) => renderLink(l))}</nav>
+          <hr className="border-[#B58DD44D]" />
+          {!collapsed && <p className="text-white/70 text-xs font-semibold uppercase tracking-wider px-3">Quick Actions</p>}
+          <nav className="flex flex-col gap-1.5">{quickLinks.map((l) => renderLink(l, true))}</nav>
+        </div>
+
+        <div className="mt-auto shrink-0">
+          {collapsed ? (
+            <div className="flex flex-col gap-2 items-center">
+              <button onClick={handleLogout} className="p-2 rounded-lg hover:bg-red-500/20 text-white/70 hover:text-red-400 transition" title="Sign Out">
+                <LogOut className="w-5 h-5" />
+              </button>
+              <div className="flex bg-[#6A4094] rounded-lg p-2 justify-center">
+                <LogoMark className="w-8 h-8" />
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white/10 border border-white/15 backdrop-blur-md rounded-xl p-3 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="avatar" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-[#401667] flex items-center justify-center shrink-0">
+                    <span className="text-white text-xs font-semibold">{user?.fullName?.charAt(0)?.toUpperCase() || "?"}</span>
+                  </div>
+                )}
+                <div className="flex flex-col min-w-0">
+                  <p className="font-semibold text-white text-xs truncate">{user?.fullName || "Complete your profile"}</p>
+                  <p className="text-white/70 text-[10px] truncate">{user?.email}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleLogout} className="flex-1 px-2 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-white text-xs font-medium transition flex items-center justify-center gap-1.5">
+                  <LogOut className="w-3.5 h-3.5" /> Sign Out
+                </button>
+                <Link to="/dashboard/profile" onClick={() => isMobile && onClose?.()} className="flex-1 px-2 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-medium transition text-center">
+                  Account
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      <CreatePostModal isOpen={showCreatePost} onClose={() => setShowCreatePost(false)} />
+      <CreateGroupModal isOpen={showCreateGroup} onClose={() => setShowCreateGroup(false)} />
+
+      {showFeedbackModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white text-slate-900 shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between bg-[#401667] px-5 py-4 text-white">
+              <div>
+                <p className="text-lg font-semibold">Share your feedback</p>
+                <p className="text-xs text-purple-100">We value your thoughts</p>
+              </div>
+              <button onClick={() => setShowFeedbackModal(false)} className="p-1.5 rounded-full hover:bg-white/10 transition" aria-label="Close feedback form">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleFeedbackSubmit} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={feedbackForm.name}
+                  onChange={handleFeedbackChange}
+                  required
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                  placeholder="Your name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={feedbackForm.email}
+                  onChange={handleFeedbackChange}
+                  required
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Feedback</label>
+                <textarea
+                  name="feedback"
+                  value={feedbackForm.feedback}
+                  onChange={handleFeedbackChange}
+                  required
+                  rows={5}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none resize-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                  placeholder="Tell us what you think..."
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#401667] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#2e1048] transition"
+              >
+                <Send className="w-4 h-4" />
+                Submit Feedback
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showFeedbackSuccess && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center shadow-2xl">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-white">
+              <CheckCircle2 className="h-8 w-8" />
+            </div>
+            <h3 className="text-xl font-bold text-emerald-900">Thank you for your feedback</h3>
+            <p className="mt-2 text-sm text-emerald-700">We will review it shortly.</p>
+            <button
+              onClick={() => setShowFeedbackSuccess(false)}
+              className="mt-5 w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
