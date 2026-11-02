@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import GoogleAuthButton, { AuthDivider } from "../../shared/GoogleAuthButton";
 import AuthLayout from "../../auth/AuthLayout";
 import AuthCard from "../../auth/AuthCard";
+import PasswordChecklist from "../../shared/PasswordChecklist";
 import Input from "../../shared/Input";
 import Button from "../../shared/Btn";
 import Recaptcha, { RECAPTCHA_SITE_KEY } from "../../shared/Recaptcha";
@@ -86,14 +87,8 @@ const Register = () => {
           <Input name="email" type="email" value={values.email}
             onChange={handleChange} error={errors.email} placeholder="Enter your email" />
           <Input name="password" type="password" value={values.password}
-            onChange={handleChange} error={errors.password} placeholder="Create a password" />
-          <p className="text-sm text-gray-500">
-            Password must be at least{" "}
-            <span className="font-semibold text-purple-900">8 characters</span>{" "}
-            long containing a{" "}
-            <span className="font-semibold text-purple-900">number</span> and a{" "}
-            <span className="font-semibold text-purple-900">special character</span>
-          </p>
+            onChange={handleChange} placeholder="Create a password" />
+          <PasswordChecklist password={values.password} />
           <Recaptcha ref={recaptchaRef} onChange={setRecaptchaToken} />
           <Button type="submit" loading={loading}
             variant={isFormValid && !loading ? "active" : "primary"}
