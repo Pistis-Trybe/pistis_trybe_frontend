@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { GoogleLogin } from "@react-oauth/google";
+import GoogleAuthButton, { AuthDivider } from "../../shared/GoogleAuthButton";
 import AuthLayout from "../../auth/AuthLayout";
 import AuthCard from "../../auth/AuthCard";
 import Input from "../../shared/Input";
@@ -102,16 +102,9 @@ const Register = () => {
           </Button>
         </form>
 
-        <div className="flex justify-between items-center my-5 gap-3">
-          <hr className="border-gray-300 w-full" />
-          <p>or</p>
-          <hr className="border-gray-300 w-full" />
-        </div>
+        <AuthDivider />
 
-        <div className="flex justify-center">
-          <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError}
-            text="signup_with" shape="rectangular" size="large" width="100%" />
-        </div>
+        <GoogleAuthButton text="signup_with" onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
 
         <p className="text-sm mt-6 text-gray-500">
           Already have an account?{" "}
