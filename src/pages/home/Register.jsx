@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { GoogleLogin } from "@react-oauth/google";
+import GoogleAuthButton, { AuthDivider } from "../../shared/GoogleAuthButton";
 import AuthLayout from "../../auth/AuthLayout";
 import AuthCard from "../../auth/AuthCard";
+import PasswordChecklist from "../../shared/PasswordChecklist";
 import Input from "../../shared/Input";
 import Button from "../../shared/Btn";
 import Recaptcha, { RECAPTCHA_SITE_KEY } from "../../shared/Recaptcha";
@@ -86,14 +87,8 @@ const Register = () => {
           <Input name="email" type="email" value={values.email}
             onChange={handleChange} error={errors.email} placeholder="Enter your email" />
           <Input name="password" type="password" value={values.password}
-            onChange={handleChange} error={errors.password} placeholder="Create a password" />
-          <p className="text-sm text-gray-500">
-            Password must be at least{" "}
-            <span className="font-semibold text-purple-900">8 characters</span>{" "}
-            long containing a{" "}
-            <span className="font-semibold text-purple-900">number</span> and a{" "}
-            <span className="font-semibold text-purple-900">special character</span>
-          </p>
+            onChange={handleChange} placeholder="Create a password" />
+          <PasswordChecklist password={values.password} />
           <Recaptcha ref={recaptchaRef} onChange={setRecaptchaToken} />
           <Button type="submit" loading={loading}
             variant={isFormValid && !loading ? "active" : "primary"}
@@ -102,16 +97,9 @@ const Register = () => {
           </Button>
         </form>
 
-        <div className="flex justify-between items-center my-5 gap-3">
-          <hr className="border-gray-300 w-full" />
-          <p>or</p>
-          <hr className="border-gray-300 w-full" />
-        </div>
+        <AuthDivider />
 
-        <div className="flex justify-center">
-          <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError}
-            text="signup_with" shape="rectangular" size="large" width="100%" />
-        </div>
+        <GoogleAuthButton text="signup_with" onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
 
         <p className="text-sm mt-6 text-gray-500">
           Already have an account?{" "}
