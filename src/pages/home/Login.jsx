@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { GoogleLogin } from "@react-oauth/google";
+import GoogleAuthButton, { AuthDivider } from "../../shared/GoogleAuthButton";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../../auth/AuthLayout";
 import AuthCard from "../../auth/AuthCard";
@@ -104,16 +104,9 @@ const Login = () => {
           <Link to="/forgot-password">Forgot Password?</Link>
         </p>
 
-        <div className="flex items-center my-5 gap-3">
-          <hr className="border-gray-300 w-full" />
-          <p>or</p>
-          <hr className="border-gray-300 w-full" />
-        </div>
+        <AuthDivider />
 
-        <div className="flex justify-center">
-          <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError}
-            text="signin_with" shape="rectangular" size="large" width="100%" />
-        </div>
+        <GoogleAuthButton text="signin_with" onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
 
         <p className="text-sm mt-6 text-gray-500 text-center">
           Don't have an account?{" "}
