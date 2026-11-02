@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import AuthLayout from "../../auth/AuthLayout";
 import AuthCard from "../../auth/AuthCard";
 import Input from "../../shared/Input";
 import Button from "../../shared/Btn";
+import Recaptcha, { RECAPTCHA_SITE_KEY } from "../../shared/Recaptcha";
 import useForm from "../../hooks/UseForm";
 import { registerUser, googleLogin } from "../../services/AuthService";
 
@@ -13,6 +14,8 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [recaptchaToken, setRecaptchaToken] = useState(null);
+  const recaptchaRef = useRef(null);
 
   const validate = (values) => {
     const errors = {};
@@ -30,14 +33,15 @@ const Register = () => {
     validate
   );
 
-  const isFormValid = values.email && values.password && Object.keys(errors).length === 0;
+  const isFormValid = values.email && values.password && Object.keys(errors).length === 0 &&
+    (!RECAPTCHA_SITE_KEY || recaptchaToken);
 
   const onSubmit = async () => {
     try {
       setLoading(true);
       setServerError("");
       setSuccessMessage("");
-      const result = await registerUser(values);
+      const result = await registerUser({ ...values, recaptchaToken });
       sessionStorage.setItem("pistis-pending-email", values.email);
       navigate("/verify-email", { state: { email: values.email, resendAfterSeconds: result.resendAfterSeconds } });
       return result;
@@ -45,6 +49,8 @@ const Register = () => {
       setServerError(error?.message || "Registration failed. Please try again.");
     } finally {
       setLoading(false);
+      recaptchaRef.current?.reset();
+      setRecaptchaToken(null);
     }
   };
 
@@ -88,6 +94,7 @@ const Register = () => {
             <span className="font-semibold text-purple-900">number</span> and a{" "}
             <span className="font-semibold text-purple-900">special character</span>
           </p>
+          <Recaptcha ref={recaptchaRef} onChange={setRecaptchaToken} />
           <Button type="submit" loading={loading}
             variant={isFormValid && !loading ? "active" : "primary"}
             disabled={!isFormValid || loading}>

@@ -9,7 +9,7 @@ import { logoutUser } from "../../../services/AuthService";
 import CreatePostModal from "../groups/CreatePostModal";
 import CreateGroupModal from "../groups/CreateGroupModal";
 import { getMe } from "../../../services/UserService";
-import emailjs from "@emailjs/browser";
+import { submitFeedback } from "../../../services/FeedbackService";
 import { toast } from "react-toastify";
 
 export default function Sidebar({ isOpen, onClose, isMobile = false }) {
@@ -51,28 +51,18 @@ export default function Sidebar({ isOpen, onClose, isMobile = false }) {
   const handleFeedbackSubmit = async (e) => {
     e.preventDefault();
 
-    const templateParams = {
-      from_name:  feedbackForm.name,
-      from_email: feedbackForm.email,
-      message:    feedbackForm.feedback,
-      to_name:    "Pistis Trybe Team",
-      sent_at:    new Date().toLocaleString(),
-    };
-
     try {
-      await emailjs.send(
-        import.meta.env.VITE_EMAILJS_SERVICE_ID,
-        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
-        templateParams,
-        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
-      );
+      await submitFeedback({
+        name: feedbackForm.name,
+        email: feedbackForm.email,
+        message: feedbackForm.feedback,
+      });
 
       setFeedbackForm({ name: "", email: "", feedback: "" });
       setShowFeedbackModal(false);
       setShowFeedbackSuccess(true);
     } catch (err) {
-      console.error("EmailJS error:", err);
-      toast.error("Failed to send feedback. Please try again.");
+      toast.error(err?.message || "Failed to send feedback. Please try again.");
     }
   };
 
