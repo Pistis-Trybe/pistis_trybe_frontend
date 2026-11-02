@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import AuthLayout from "../../auth/AuthLayout";
 import AuthCard from "../../auth/AuthCard";
 import Input from "../../shared/Input";
 import Button from "../../shared/Btn";
+import Recaptcha, { RECAPTCHA_SITE_KEY } from "../../shared/Recaptcha";
 import useForm from "../../hooks/UseForm";
 import { forgotPwd } from "../../services/AuthService";
 
@@ -10,6 +11,8 @@ const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [recaptchaToken, setRecaptchaToken] = useState(null);
+  const recaptchaRef = useRef(null);
 
   const validate = (values) => {
     const errors = {};
@@ -25,7 +28,7 @@ const ForgotPassword = () => {
       setLoading(true);
       setServerError("");
       setSuccessMsg("");
-      await forgotPwd({ email: values.email });
+      await forgotPwd({ email: values.email, recaptchaToken });
       setSuccessMsg(
         "If an account with that email exists, a reset link has been sent. Check your inbox."
       );
@@ -33,6 +36,8 @@ const ForgotPassword = () => {
       setServerError(error?.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
+      recaptchaRef.current?.reset();
+      setRecaptchaToken(null);
     }
   };
 
@@ -56,7 +61,9 @@ const ForgotPassword = () => {
               onChange={handleChange}
               error={errors.email}
             />
-            <Button type="submit" loading={loading}>
+            <Recaptcha ref={recaptchaRef} onChange={setRecaptchaToken} />
+            <Button type="submit" loading={loading}
+              disabled={loading || (RECAPTCHA_SITE_KEY && !recaptchaToken)}>
               Send Reset Link
             </Button>
           </form>

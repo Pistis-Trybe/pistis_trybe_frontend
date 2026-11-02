@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { GoogleLogin } from "@react-oauth/google";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../../auth/AuthLayout";
 import AuthCard from "../../auth/AuthCard";
 import Input from "../../shared/Input";
 import Button from "../../shared/Btn";
+import Recaptcha, { RECAPTCHA_SITE_KEY } from "../../shared/Recaptcha";
 import useForm from "../../hooks/UseForm";
 import { loginUser, googleLogin, resendOtp } from "../../services/AuthService";
 
@@ -12,6 +13,8 @@ const Login = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [recaptchaToken, setRecaptchaToken] = useState(null);
+  const recaptchaRef = useRef(null);
 
   const validate = (values) => {
     const errors = {};
@@ -26,7 +29,8 @@ const Login = () => {
     validate
   );
 
-  const isFormValid = values.email && values.password && Object.keys(errors).length === 0;
+  const isFormValid = values.email && values.password && Object.keys(errors).length === 0 &&
+    (!RECAPTCHA_SITE_KEY || recaptchaToken);
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
@@ -54,7 +58,7 @@ const Login = () => {
     try {
       setLoading(true);
       setServerError("");
-      const { user } = await loginUser(values); // destructure user from return
+      const { user } = await loginUser({ ...values, recaptchaToken }); // destructure user from return
 
       if (user?.role === "admin" || user?.role === "super_admin") {
         navigate("/admin");
@@ -71,6 +75,8 @@ const Login = () => {
       setServerError(error?.message || "Login failed. Please check your credentials.");
     } finally {
       setLoading(false);
+      recaptchaRef.current?.reset();
+      setRecaptchaToken(null);
     }
   };
 
@@ -86,6 +92,7 @@ const Login = () => {
             value={values.email} onChange={handleChange} error={errors.email} />
           <Input name="password" type="password" placeholder="Password"
             value={values.password} onChange={handleChange} error={errors.password} />
+          <Recaptcha ref={recaptchaRef} onChange={setRecaptchaToken} />
           <Button type="submit" loading={loading}
             variant={isFormValid && !loading ? "active" : "primary"}
             disabled={!isFormValid || loading}>

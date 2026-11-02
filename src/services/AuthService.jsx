@@ -9,14 +9,14 @@ const storeAuth = ({ accessToken, refreshToken, user }) => {
   if (user) localStorage.setItem("user", JSON.stringify(user));
 };
 
-export const loginUser = async ({ email, password }) => {
-  const response = await api.post("/auth/login", { email, password });
+export const loginUser = async ({ email, password, recaptchaToken }) => {
+  const response = await api.post("/auth/login", { email, password, recaptchaToken });
   storeAuth(response.data.data);
   return response.data.data;
 };
 
-export const registerUser = async ({ fullName, email, password }) => {
-  const response = await api.post("/auth/register", { fullName, email, password });
+export const registerUser = async ({ email, password, recaptchaToken }) => {
+  const response = await api.post("/auth/register", { email, password, recaptchaToken });
   return response.data.data;
 };
 
@@ -37,8 +37,8 @@ export const googleLogin = async (credential) => {
   return response.data.data;
 };
 
-export const forgotPwd = async ({ email }) => {
-  const response = await api.post("/auth/forgot-password", { email });
+export const forgotPwd = async ({ email, recaptchaToken }) => {
+  const response = await api.post("/auth/forgot-password", { email, recaptchaToken });
   return response.data;
 };
 
